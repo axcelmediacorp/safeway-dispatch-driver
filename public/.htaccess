@@ -8,6 +8,11 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Owner, 2026-11-18: /driver opens Dispatch's built-in driver app (its public/driver folder), which runs on the Dispatch
+    # address because it calls /driver-api there. Dev server only (the host check); the path after /driver/ is kept.
+    RewriteCond %{HTTP_HOST} ^driver\.safeway-dispatch\.dev\.rp021\.webhelplogin\.com$ [NC]
+    RewriteRule ^driver(?:/(.*))?$ https://dispatch.safeway-dispatch.dev.rp021.webhelplogin.com/driver/$1 [R=302,L]
+
     # Determine the RewriteBase automatically (app in a sub-folder) and expose it as BASE.
     RewriteCond %{REQUEST_URI}::$0 ^(/.+)/(.*)::\2$
     RewriteRule .* - [E=BASE:%1]
