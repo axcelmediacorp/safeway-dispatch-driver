@@ -63,7 +63,7 @@ final class DriverApiException extends \RuntimeException
         }
         $code = \is_string($body['code'] ?? null) ? $body['code'] : null;
         $message = match (true) {
-            $code === 'INVALID_CREDENTIALS' => 'Wrong phone / employee number or PIN.',
+            $code === 'INVALID_CREDENTIALS' => 'Wrong phone number or PIN.',
             $code === 'RATE_LIMITED' => 'Too many tries. Wait a few minutes and try again.',
             \is_string($body['detail'] ?? null) && $body['detail'] !== '' => $body['detail'],
             $fields !== [] => (string) reset($fields),

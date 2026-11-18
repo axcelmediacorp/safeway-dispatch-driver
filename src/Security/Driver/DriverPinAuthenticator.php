@@ -50,7 +50,7 @@ final class DriverPinAuthenticator extends AbstractAuthenticator implements Auth
         $pin = (string) $request->request->get('pin', '');
         $request->getSession()->set(SecurityRequestAttributes::LAST_USERNAME, $login);
         if ($login === '' || $pin === '') {
-            throw new CustomUserMessageAuthenticationException('Enter your phone number or employee number and your PIN.');
+            throw new CustomUserMessageAuthenticationException('Enter your phone number and your PIN.');
         }
 
         // The CSRF badge is checked before the user loader runs, so a forged post never reaches the admin API.

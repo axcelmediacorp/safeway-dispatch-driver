@@ -19,7 +19,7 @@
         <form method="post" action="{{ path('app_driver_login') }}" novalidate>
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('driver_login') }}">
             <div class="form-group">
-                <label for="login">Phone Number or Employee #</label>
+                <label for="login">Phone Number</label>
                 <input type="text" id="login" name="login" class="input" value="{{ last_username }}"
                        autocomplete="username" autocapitalize="characters" required{{ last_username ? '' : ' autofocus' }}>
             </div>
