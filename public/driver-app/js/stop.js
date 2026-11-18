@@ -5,7 +5,8 @@
      - On My Way / Arrived / Undo          POST stops/{id}/on-my-way|arrived|undo (one stop on the way at a time)
      - Add Note                            POST stops/{id}/notes {reason_code?, text}
      - Mark Complete                       POST photos (two copies per photo), POST stops/{id}/complete
-     - Work Hours                          POST hours {event}
+     - Work Hours                          POST hours {event}; Start Route / On My Way first ask "Start work now?" once a
+                                           day when this phone has no work start today (the API does not require one)
    ========================================================================= */
 (function () {
   "use strict";
@@ -23,12 +24,54 @@
     if (msg) box.scrollIntoView({ block: "center" });
   }
 
+  // ---------------------------------------------------------------- Work Hours memory (this phone's last hours tap)
+  var HOURS_KEY = "swd-hours-" + SWD.driverId;
+  var ASKED_KEY = "swd-hours-asked-" + SWD.driverId;
+  var HOUR_LABELS = { start: "Start work", break_start: "Start break", break_end: "End break", end: "End work" };
+  function today() { var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function dayOf(ms) { var d = new Date(ms); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function lastHours() { try { return JSON.parse(localStorage.getItem(HOURS_KEY) || "null"); } catch (e) { return null; } }
+  // Sends one hours tap; remembers it when sent, queued, or refused for order (409: the server's order differs from
+  // this phone's memory, e.g. another phone — take its word). Resolves to the write's answer.
+  function sendHours(ev) {
+    return SWD.write("POST", "hours", { event: ev }, { label: HOUR_LABELS[ev] }).then(function (r) {
+      if (r.ok || r.queued || r.status === 409) {
+        if (r.status === 409) SWD.toast(r.error);
+        else SWD.toast(HOUR_LABELS[ev] + (r.ok ? " saved." : " — saved on this phone."));
+        try { localStorage.setItem(HOURS_KEY, JSON.stringify({ event: ev, at: Date.now() })); } catch (err) { /* this visit only */ }
+      } else {
+        SWD.toast(r.error);
+      }
+      return r;
+    });
+  }
+  // Before the day's driving: if this phone has no work start today, ask once a day "Start work now?". Either way the
+  // tap goes on (Work Hours is not required by the API).
+  function askStartWork(then) {
+    var last = lastHours();
+    var working = last && last.event !== "end" && dayOf(last.at) === today();
+    var asked = null;
+    try { asked = localStorage.getItem(ASKED_KEY); } catch (e) { asked = today(); }
+    if (working || asked === today()) { then(); return; }
+    try { localStorage.setItem(ASKED_KEY, today()); } catch (e) { /* asks again next page */ }
+    if (!window.confirm("You have not started work today.\n\nStart work now?")) { then(); return; }
+    busy = true;
+    sendHours("start").then(function () { busy = false; then(); });
+  }
+
   // ---------------------------------------------------------------- route Start / Finish, stop steps
   document.addEventListener("click", function (e) {
     var rb = e.target.closest ? e.target.closest("[data-route-tap]") : null;
-    if (rb) { routeTap(rb); return; }
+    if (rb) {
+      if (busy) return;
+      if (rb.getAttribute("data-route-tap") === "start") askStartWork(function () { routeTap(rb); }); else routeTap(rb);
+      return;
+    }
     var sb = e.target.closest ? e.target.closest("[data-stop-tap]") : null;
-    if (sb) stopTap(sb);
+    if (sb) {
+      if (busy) return;
+      if (sb.getAttribute("data-stop-tap") === "on-my-way") askStartWork(function () { stopTap(sb); }); else stopTap(sb);
+    }
   });
 
   function routeTap(btn) {
@@ -98,10 +141,7 @@
   // ---------------------------------------------------------------- Work Hours
   var hours = document.querySelector("[data-hours]");
   if (hours) {
-    var KEY = "swd-hours-" + SWD.driverId;
-    var LABELS = { start: "Start work", break_start: "Start break", break_end: "End break", end: "End work" };
-    var last = null;
-    try { last = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { last = null; }
+    var last = lastHours();
     var allowed = function () {
       var ev = last && last.event;
       if (!ev || ev === "end") return ["start"];
@@ -111,25 +151,17 @@
     var draw = function () {
       var ok = allowed();
       hours.querySelectorAll("[data-hours-event]").forEach(function (b) { b.disabled = ok.indexOf(b.getAttribute("data-hours-event")) === -1; });
-      hours.querySelector("[data-hours-last]").textContent = last ? "Last: " + LABELS[last.event] + " at " + new Date(last.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+      hours.querySelector("[data-hours-last]").textContent = last ? "Last: " + HOUR_LABELS[last.event] + " at " + new Date(last.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
     };
     hours.addEventListener("click", function (e) {
       var b = e.target.closest("[data-hours-event]");
       if (!b || busy) return;
       var ev = b.getAttribute("data-hours-event");
       busy = true;
-      SWD.write("POST", "hours", { event: ev }, { label: LABELS[ev] }).then(function (r) {
+      sendHours(ev).then(function () {
         busy = false;
-        // 409 on "event": the server's order differs from this phone's memory (e.g. another phone) — take its word.
-        if (r.ok || r.queued || r.status === 409) {
-          if (r.status === 409) { SWD.toast(r.error); }
-          else { SWD.toast(LABELS[ev] + (r.ok ? " saved." : " — saved on this phone.")); }
-          last = { event: ev, at: Date.now() };
-          try { localStorage.setItem(KEY, JSON.stringify(last)); } catch (err) { /* this visit only */ }
-          draw();
-          return;
-        }
-        SWD.toast(r.error);
+        last = lastHours() || last;
+        draw();
       });
     });
     draw();
