@@ -32,7 +32,15 @@
             <a href="{{ path('app_driver_tasks') }}">Home</a>
             {% block crumbs %}{% endblock %}
         </nav>
-        <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+        {# A second page sets `back_url` (its parent page) and gets a back arrow beside the title. #}
+        <div class="page-head">
+            {% if back_url is defined %}
+                <a class="icon-btn back-btn" href="{{ back_url }}" aria-label="Back">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </a>
+            {% endif %}
+            <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+        </div>
 
         <div class="app-content">
             <div class="alert alert-warning" data-offline-banner hidden></div>

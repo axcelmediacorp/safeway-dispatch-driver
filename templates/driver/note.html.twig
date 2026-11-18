@@ -5,6 +5,8 @@
     optional (Safeway Driver API section 8), the text is required without one.
 #}
 
+{% set back_url = path('app_driver_stop', {id: stop.id}) %}
+
 {% block title %}Add Note — Safeway Driver{% endblock %}
 {% block crumbs %} / <a href="{{ path('app_driver_tasks') }}">List Destinations</a> / <span>{{ stop.company }}</span>{% endblock %}
 {% block page_title %}Add Note: {{ stop.company }}{% endblock %}

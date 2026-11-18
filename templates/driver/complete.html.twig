@@ -9,6 +9,8 @@
     Photos: 1 to 10, required unless every task failed (a reload at the warehouse needs none).
 #}
 
+{% set back_url = path('app_driver_stop', {id: stop.id}) %}
+
 {% block title %}Mark Complete — Safeway Driver{% endblock %}
 {% block crumbs %} / <span>Mark Complete</span>{% endblock %}
 {% block page_title %}Mark Complete: {{ stop.company }}{% endblock %}
